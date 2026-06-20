@@ -1,6 +1,6 @@
 {
-  "provider": "openai",
-  "model": "gpt-5.4-nano",
+  "provider": "openrouter",
+  "model": "openai/gpt-4o-mini",
   "model_price_tier": "premium",
   "max_steps": 12,
   "loop_guard": false,

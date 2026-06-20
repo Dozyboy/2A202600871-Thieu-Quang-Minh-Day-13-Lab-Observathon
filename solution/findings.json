@@ -1,12 +1,44 @@
 {
-  "team": "TODO-team-name",
-  "schema_version": 1,
+  "team": "DOZYBOY",
   "findings": [
     {
-      "fault_class": "latency_spike",
-      "evidence": {"metric": "latency_p95_ms", "observed": "TODO from your telemetry", "trace_ids": []},
-      "root_cause": "TODO: what config knob or behavior causes it?",
-      "suggested_fix": "TODO: config change and/or wrapper mitigation"
+      "id": "F1",
+      "title": "RAG latency spike detected",
+      "severity": "P2",
+      "symptom": "latency_p95 increased after rag_slow incident was enabled",
+      "root_cause": "The retrieval step became slow because rag_slow introduced an artificial 2.5s delay",
+      "evidence": {
+        "metrics": ["latency_p95", "latency_p99"],
+        "traces": ["Langfuse trace shows slow agent run/retrieval"],
+        "logs": ["response_sent contains high latency_ms with same correlation_id"]
+      },
+      "fix": "Optimize retrieval, add timeout, add caching, and monitor latency_p95"
+    },
+    {
+      "id": "F2",
+      "title": "Vector store timeout causes failed requests",
+      "severity": "P1",
+      "symptom": "error_breakdown increased after tool_fail incident was enabled",
+      "root_cause": "The retrieval tool raised RuntimeError: Vector store timeout",
+      "evidence": {
+        "metrics": ["error_breakdown"],
+        "traces": ["Langfuse trace shows failed request"],
+        "logs": ["request_failed event contains error_type RuntimeError"]
+      },
+      "fix": "Add retry, fallback response, timeout handling, and alert high_error_rate"
+    },
+    {
+      "id": "F3",
+      "title": "Cost spike caused by abnormal output tokens",
+      "severity": "P2",
+      "symptom": "avg_cost_usd and tokens_out_total increased after cost_spike incident was enabled",
+      "root_cause": "The LLM generated four times more output tokens",
+      "evidence": {
+        "metrics": ["avg_cost_usd", "total_cost_usd", "tokens_out_total"],
+        "traces": ["Langfuse usage_details shows higher output tokens"],
+        "logs": ["response_sent event contains high tokens_out and cost_usd"]
+      },
+      "fix": "Set max output token limit, shorten prompt, and alert on cost_budget_spike"
     }
   ]
 }
