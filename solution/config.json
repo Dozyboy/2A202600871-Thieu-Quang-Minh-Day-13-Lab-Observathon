@@ -1,12 +1,12 @@
 {
   "provider": "openai",
   "model": "openai/gpt-4o-mini",
-  "model_price_tier": "premium",
-  "max_steps": 12,
+  "model_price_tier": "local",
+  "max_steps": 5,
   "loop_guard": true,
   "temperature": 0.2,
-  "context_size": 8,
-  "verbose_system": true,
+  "context_size": 4,
+  "verbose_system": false,
   "timeout_ms": 0,
   "max_completion_tokens": 2000,
   "retry": {

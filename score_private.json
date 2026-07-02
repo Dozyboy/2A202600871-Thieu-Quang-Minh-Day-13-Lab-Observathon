@@ -1,0 +1,21 @@
+{
+  "team": "DOZYBOY",
+  "phase": "private",
+  "headline": 100.0,
+  "sub": {
+    "correct": 1.0,
+    "quality": 1.0,
+    "error": 1.0,
+    "latency": 0.3032,
+    "cost": 1.0,
+    "drift": 1.0,
+    "prompt": 0.9524
+  },
+  "diag_f1": 1.0,
+  "n": 80,
+  "n_correct": 80,
+  "judge_mode": "offline",
+  "weights_hash": "e81a8ed58d93",
+  "key_hash": "7e3905b75db0",
+  "sig": "4ce1039b5d1a9765d889a8b68fd4c1561644f3e635c0d16be4710dda2e2122a2"
+}
