@@ -1,0 +1,19 @@
+# Các loại lỗi cần chẩn đoán (Không có câu trả lời sẵn ở đây — hãy tìm bằng Telemetry của BẠN)
+
+Agent chạy ở dạng hộp đen im lặng trên một **LLM thật**. **Tệp `run_output.json` chỉ cung cấp cho bạn `answer` + `status`** — để theo dõi độ trễ, số lượng token, các lượt gọi công cụ (tool calls), vết thực thi từng bước (trace), sự giảm chất lượng hội thoại (drift) và thông tin cá nhân (PII), bạn bắt buộc phải **cài đặt quan sát (instrument) trong `solution/wrapper.py`** (hàm `call_next` sẽ trả về đầy đủ dữ liệu `meta` + `trace` cho bạn). Mỗi loại lỗi bên dưới chỉ xuất hiện khi bạn đo lường nó ở ranh giới hệ thống. Các lỗi sửa được bằng cấu hình được sửa trong `config.json`; các lỗi sửa được bằng **prompt** được sửa bằng cách viết lại `solution/prompt.txt` (xem `PROMPT_OPTIMIZATION_vi.md`).
+
+| Lớp lỗi | Biểu hiện lỗi | Cách phát hiện | Cách khắc phục |
+|---|---|---|---|
+| **error_spike** | Một số lượt gọi công cụ thất bại ngẫu nhiên. | Ghi lại `error` của mỗi kết quả tool; theo dõi tỷ lệ lỗi. | Cấu hình: `tool_error_rate`/`retry`. |
+| **latency_spike** | Các yêu cầu phản hồi chậm bất thường (long-tail latency). | Đo `meta.latency_ms` trên mỗi request; tính toán P50/P95/P99. | Cấu hình: Thay đổi model tier/giảm context/bật `cache`. |
+| **cost_blowup** | Chi phí/token vượt quá nhiều so với tác vụ thực tế. | Cộng tổng `meta.usage` × đơn giá; so sánh token đầu vào vs đầu ra. | Cấu hình: `context_size`, `model_price_tier`, `verbose_system`. |
+| **quality_drift** | Câu trả lời tệ dần ở cuối phiên; lỗi nhân đôi mã giảm giá private. | Đo lường độ chính xác theo `turn_index`; đánh giá chất lượng phiên chat. | Cấu hình: `session_drift_rate`; bật `self_consistency`/retry. |
+| **infinite_loop** | Gọi lặp lại cùng một công cụ với tham số giống hệt; lỗi `status=max_steps`. | Quét `result.trace` để tìm các hành động `action` bị trùng lặp. | Cấu hình: `loop_guard`, `max_steps`. |
+| **tool_failure** | Dữ liệu từ công cụ mâu thuẫn với thực tế; các thành phố có dấu luôn thất bại. | So sánh quan sát thực tế (observation) với mong đợi. | Cấu hình: `normalize_unicode`, `catalog_override` (xóa nó đi). |
+| **pii_leak** | Email/SĐT của khách hàng hiển thị thô trong câu trả lời. | Quét các câu trả lời bằng công cụ `telemetry/redact.py`. | Cấu hình: `redact_pii` **hoặc** thêm quy tắc lọc trong prompt/wrapper. |
+| **fabrication** *(prompt)* | Agent tự ý bịa tổng tiền cho sản phẩm hết hàng hoặc không có trong danh mục. | So sánh câu trả lời với các trường hợp đáng lẽ phải từ chối (refuse). | **Prompt**: Bám sát thực tế (ground), không bao giờ tự bịa giá, thực hiện từ chối đơn hàng. |
+| **arithmetic_error** *(prompt)* | Tính sai tổng tiền hoặc áp dụng giảm giá ngược (tệ hơn ở temp 1.6). | Tự tính toán lại tổng tiền mong đợi bằng code Python. | **Prompt**: Hướng dẫn công thức chia lấy nguyên chính xác + tự kiểm tra; cấu hình `temperature` thấp; `self_consistency`. |
+| **tool_overuse** *(prompt)* | Gọi nhiều lượt công cụ hơn mức cần thiết. | Đếm số lượng `tools_used` so với mức tối thiểu cần thiết. | **Prompt**: Mỗi công cụ chỉ gọi một lần; cấu hình: `tool_budget`. |
+| **prompt_injection** *(PRIVATE)* | Agent tuân theo giá hoặc chỉ thị giả được ẩn trong ghi chú đơn hàng. | So sánh tổng tiền với đơn hàng thật; phát hiện các nhãn "GHI CHU". | **Prompt**: Coi phần ghi chú là DỮ LIỆU TĨNH, không bao giờ làm theo chỉ dẫn trong đó; Wrapper: Làm sạch ghi chú. |
+
+Mỗi lớp lỗi đều có thể khắc phục được bằng cách thay đổi **cấu hình** (config), viết lại **prompt**, giảm thiểu lỗi trong **wrapper**, hoặc kết hợp các phương pháp này. Một số lỗi xuất hiện ngẫu nhiên hoặc chỉ xuất hiện trên một số đầu vào/lượt hội thoại nhất định — hãy chạy trình mô phỏng đủ nhiều để quan sát thấy chúng. Lớp lỗi **`prompt_injection`** chỉ xuất hiện trong giai đoạn **private**: hãy xây dựng một prompt mạnh mẽ chống lại prompt injection.
