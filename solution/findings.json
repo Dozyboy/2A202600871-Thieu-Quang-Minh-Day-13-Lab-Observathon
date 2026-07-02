@@ -140,6 +140,20 @@
         "logs": ["Error/incorrect answer rates rise in higher turn counts"]
       },
       "fix": "Enable context_reset_every or configure session_drift_rate parameters in config.json."
+    },
+    {
+      "id": "F11",
+      "title": "Prompt Injection in Order Notes",
+      "fault_class": "prompt_injection",
+      "severity": "P1",
+      "symptom": "Agent obeys fake prices or instructions hidden in the order note.",
+      "root_cause": "The system prompt treats order notes as instructions rather than passive data.",
+      "evidence": {
+        "metrics": ["n_correct decreases in private phase"],
+        "traces": ["Traces show agent overriding stock prices with values from note"],
+        "logs": ["Calculated total matches fake price in note instead of tool price"]
+      },
+      "fix": "Sanitize order notes in wrapper.py and instruct model to ignore instructions in notes."
     }
   ]
 }

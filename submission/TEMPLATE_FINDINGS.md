@@ -15,3 +15,4 @@ For each fault you found, fill one row AND a matching entry in `solution/finding
 | **fabrication** | Subtotal calculated for items with in_stock=false. | LLM attempts to satisfy request by hallucinating unavailable prices. | Instruct model to refuse and output no total when items are out of stock. |
 | **tool_failure** | calc_shipping fails for cities with diacritics. | Unicode encoding mismatches when sending Vietnamese city strings. | Enable normalize_unicode: true in config.json. |
 | **quality_drift** | Correctness decreases as turn_index session grows. | Accumulation of context history noise over long turns. | Reduce context_size or reset session state variables. |
+| **prompt_injection** | Subtotal matches fake discount or price in note. | Agent follows hidden instructions in order notes. | Sanitize notes in wrapper.py and treat note text as passive data in prompt.txt. |
