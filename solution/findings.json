@@ -4,6 +4,7 @@
     {
       "id": "F1",
       "title": "RAG latency spike detected",
+      "fault_class": "latency_spike",
       "severity": "P2",
       "symptom": "latency_p95 increased after rag_slow incident was enabled",
       "root_cause": "The retrieval step became slow because rag_slow introduced an artificial 2.5s delay",
@@ -17,6 +18,7 @@
     {
       "id": "F2",
       "title": "Vector store timeout causes failed requests",
+      "fault_class": "error_spike",
       "severity": "P1",
       "symptom": "error_breakdown increased after tool_fail incident was enabled",
       "root_cause": "The retrieval tool raised RuntimeError: Vector store timeout",
@@ -30,6 +32,7 @@
     {
       "id": "F3",
       "title": "Cost spike caused by abnormal output tokens",
+      "fault_class": "cost_blowup",
       "severity": "P2",
       "symptom": "avg_cost_usd and tokens_out_total increased after cost_spike incident was enabled",
       "root_cause": "The LLM generated four times more output tokens",
