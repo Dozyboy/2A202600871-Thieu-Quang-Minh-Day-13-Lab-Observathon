@@ -3,45 +3,143 @@
   "findings": [
     {
       "id": "F1",
-      "title": "RAG latency spike detected",
+      "title": "RAG Latency Spike",
       "fault_class": "latency_spike",
       "severity": "P2",
-      "symptom": "latency_p95 increased after rag_slow incident was enabled",
-      "root_cause": "The retrieval step became slow because rag_slow introduced an artificial 2.5s delay",
+      "symptom": "P95 latency rises dramatically during simulation.",
+      "root_cause": "The retrieval step gets delayed due to slow database queries.",
       "evidence": {
         "metrics": ["latency_p95", "latency_p99"],
-        "traces": ["Langfuse trace shows slow agent run/retrieval"],
-        "logs": ["response_sent contains high latency_ms with same correlation_id"]
+        "traces": ["Langfuse trace shows slow retrieval span taking over 2.5s"],
+        "logs": ["AGENT_CALL logs show reported_latency_ms above 5000ms"]
       },
-      "fix": "Optimize retrieval, add timeout, add caching, and monitor latency_p95"
+      "fix": "Enable caching in config.json and implement thread-safe caching in wrapper.py."
     },
     {
       "id": "F2",
-      "title": "Vector store timeout causes failed requests",
+      "title": "Vector Store Timeout Errors",
       "fault_class": "error_spike",
       "severity": "P1",
-      "symptom": "error_breakdown increased after tool_fail incident was enabled",
-      "root_cause": "The retrieval tool raised RuntimeError: Vector store timeout",
+      "symptom": "Requests fail with 500 or wrapper_error status codes.",
+      "root_cause": "Retrieval tool raises timeout errors or connection drops under load.",
       "evidence": {
         "metrics": ["error_breakdown"],
-        "traces": ["Langfuse trace shows failed request"],
-        "logs": ["request_failed event contains error_type RuntimeError"]
+        "traces": ["Langfuse trace shows failed database calls"],
+        "logs": ["Logs contain RuntimeError: Vector store timeout"]
       },
-      "fix": "Add retry, fallback response, timeout handling, and alert high_error_rate"
+      "fix": "Implement auto-retry with exponential backoff and wrapper exceptions handling."
     },
     {
       "id": "F3",
-      "title": "Cost spike caused by abnormal output tokens",
+      "title": "Output Token Cost Blowup",
       "fault_class": "cost_blowup",
       "severity": "P2",
-      "symptom": "avg_cost_usd and tokens_out_total increased after cost_spike incident was enabled",
-      "root_cause": "The LLM generated four times more output tokens",
+      "symptom": "Cost metrics and token usage grow disproportionately.",
+      "root_cause": "The LLM generates overly verbose system responses or redundant reasoning.",
       "evidence": {
-        "metrics": ["avg_cost_usd", "total_cost_usd", "tokens_out_total"],
-        "traces": ["Langfuse usage_details shows higher output tokens"],
-        "logs": ["response_sent event contains high tokens_out and cost_usd"]
+        "metrics": ["tokens_out_total", "avg_cost_usd"],
+        "traces": ["Traces show LLM calls consuming over 2000 output tokens"],
+        "logs": ["Logs show high cost_usd per agent call"]
       },
-      "fix": "Set max output token limit, shorten prompt, and alert on cost_budget_spike"
+      "fix": "Set max completion token limits in config.json and shorten prompt instructions."
+    },
+    {
+      "id": "F4",
+      "title": "Agent Infinite Loop",
+      "fault_class": "infinite_loop",
+      "severity": "P1",
+      "symptom": "Agent fails to respond and gets stuck in infinite execution loops.",
+      "root_cause": "Repeated identical tool calls executed due to poor stopping criteria.",
+      "evidence": {
+        "metrics": ["status=loop", "status=max_steps"],
+        "traces": ["Traces show multiple duplicate calls to check_stock and calc_shipping"],
+        "logs": ["Logs show status: loop or status: max_steps"]
+      },
+      "fix": "Enable loop_guard: true and limit max_steps in config.json."
+    },
+    {
+      "id": "F5",
+      "title": "PII Data Leakage",
+      "fault_class": "pii_leak",
+      "severity": "P3",
+      "symptom": "Customer email addresses and phone numbers echoed in response answers.",
+      "root_cause": "LLM copies customer contact info from the prompt inputs into final output text.",
+      "evidence": {
+        "metrics": ["pii_hits"],
+        "traces": ["Traces show raw phone/email in final LLM response"],
+        "logs": ["Redaction processor flags matching PII patterns in logs"]
+      },
+      "fix": "Enable redact_pii in config.json and add regex redaction layer in wrapper.py."
+    },
+    {
+      "id": "F6",
+      "title": "Arithmetic Errors in Totals",
+      "fault_class": "arithmetic_error",
+      "severity": "P2",
+      "symptom": "Incorrect subtotal, discount, or shipping math in final responses.",
+      "root_cause": "LLM estimates calculations instead of exact floor division arithmetic.",
+      "evidence": {
+        "metrics": ["n_correct decreases"],
+        "traces": ["Traces show math calculation mismatches"],
+        "logs": ["Calculated total does not match expected formula total"]
+      },
+      "fix": "Lower temperature to 0.2 and instruct step-by-step arithmetic verification in prompt.txt."
+    },
+    {
+      "id": "F7",
+      "title": "Tool Overuse Cost",
+      "fault_class": "tool_overuse",
+      "severity": "P2",
+      "symptom": "Excessive API calls per session leading to latency and cost spikes.",
+      "root_cause": "Agent calls identical tools multiple times unnecessarily 'to be safe'.",
+      "evidence": {
+        "metrics": ["tools_used count"],
+        "traces": ["Multiple check_stock calls for same product name"],
+        "logs": ["Logs show redundant tools_used list entries"]
+      },
+      "fix": "Limit tool_budget in config.json and instruct once-per-tool execution in prompt.txt."
+    },
+    {
+      "id": "F8",
+      "title": "Product Price Fabrication",
+      "fault_class": "fabrication",
+      "severity": "P2",
+      "symptom": "Agent confidently creates totals for out-of-stock items.",
+      "root_cause": "LLM tries to satisfy the user request by hallucinating values when tools report false in_stock.",
+      "evidence": {
+        "metrics": ["correctness rate"],
+        "traces": ["LLM fabricates subtotal when check_stock reports in_stock: false"],
+        "logs": ["Response contains pricing details for unavailable items"]
+      },
+      "fix": "Explicitly prompt the model to refuse and output no total when items are out of stock."
+    },
+    {
+      "id": "F9",
+      "title": "Unicode and City Name Tool Failures",
+      "fault_class": "tool_failure",
+      "severity": "P2",
+      "symptom": "Shipping calculation fails for Vietnamese cities containing diacritics.",
+      "root_cause": "Unicode encoding mismatches when calling calc_shipping with non-normalized strings.",
+      "evidence": {
+        "metrics": ["correctness rate for regions"],
+        "traces": ["Tool call raises error for cities with diacritics like Hà Nội, Đà Nẵng"],
+        "logs": ["Logs show failed calc_shipping observations"]
+      },
+      "fix": "Enable normalize_unicode: true in config.json to normalize city text inputs."
+    },
+    {
+      "id": "F10",
+      "title": "Quality Drift Over Long Sessions",
+      "fault_class": "quality_drift",
+      "severity": "P2",
+      "symptom": "Agent response accuracy degrades in late turns of long user sessions.",
+      "root_cause": "Context window accumulates noise over many session turns, causing drift.",
+      "evidence": {
+        "metrics": ["correctness vs turn_index"],
+        "traces": ["Traces show quality loss in high turn_index steps"],
+        "logs": ["Error/incorrect answer rates rise in higher turn counts"]
+      },
+      "fix": "Enable context_reset_every or configure session_drift_rate parameters in config.json."
     }
   ]
 }
